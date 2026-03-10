@@ -22,32 +22,43 @@ func (h *hashStorage) addHash(resHash string, filePath string) {
 	h.mpp[filePath] = resHash
 }
 
-// producer function.
-func scanner(dir string, workQueue chan<- string) {
-	println("Scanner")
+func recursiveScanner(dir string, workQueue chan<- string) {
 	/*
 		walk through a directory✅
 		find files ✅
+		if sub dir, scan them as well
 		send file paths into the channel✅
+
 	*/
+	// println("hello")
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	for _, file := range files {
 		path := filepath.Join(dir, file.Name())
-		// println(path)
-		workQueue <- path
+		if file.IsDir() {
+			recursiveScanner(path, workQueue)
+		} else {
+			// println(path)
+			workQueue <- path
+		}
 	}
-	close(workQueue)
+}
 
+// producer function.
+func dispatcher(dir string, workQueue chan<- string) {
+	// println("Scanner")
+	defer close(workQueue)
+	recursiveScanner(dir, workQueue)
 }
 
 func worker(workerId int, workQueue <-chan string, wg *sync.WaitGroup, hs *hashStorage) {
 
 	defer wg.Done()
 	for filePath := range workQueue {
-		println("Worker id", workerId, "processing", filePath)
+		// println("Worker id", workerId, "processing", filePath)
 		//read the file content using filepath
 		fileContent, err := os.ReadFile(filePath)
 		if err != nil {
@@ -76,13 +87,13 @@ func main() {
 	//create waitGroup
 	var wg sync.WaitGroup
 	//spawing workers
-	nWorkers := 16
+	nWorkers := 8
 	for i := 1; i <= nWorkers; i++ {
 		wg.Add(1)
 		go worker(i, pathChannel, &wg, &hstorage)
 	}
 
-	go scanner(dir, pathChannel)
+	go dispatcher(dir, pathChannel)
 
 	wg.Wait()
 
