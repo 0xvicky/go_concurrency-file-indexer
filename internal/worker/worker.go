@@ -2,7 +2,8 @@ package worker
 
 import (
 	"concurrent-file-indexer/internal/storage"
-	"fmt"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"os"
 	"sync"
@@ -13,40 +14,34 @@ func StartWorker(workerId int, workQueue <-chan string, wg *sync.WaitGroup, hs *
 	defer wg.Done()
 	for filePath := range workQueue {
 		// println("Worker id", workerId, "processing", filePath)
-		//read the file content using filepath
 		file, err := os.Open(filePath)
 		if err != nil {
 			println("Fault in filepath", err)
 			continue
 		}
-		defer file.Close()
-		fmt.Println(file)
 
-		nChunks := 0
-
+		chunk := make([]byte, 1024) //buffer to store the chunk
+		chunkHasher := sha256.New()
 		for {
-			chunk := make([]byte, 1024)
 			chunkSize, err := file.Read(chunk)
 			if chunkSize > 0 {
-				println(chunkSize)
-				nChunks++
+				chunkHasher.Write(chunk[0:chunkSize])
+				// println(chunkSize, hex.EncodeToString(hash[:]))
 			}
 
+			//check if EOF
 			if err != nil {
 				if err == io.EOF {
-					println("End of the current file")
+					// println("End of the current file")
 					break
 				}
 			}
 
 		}
+		file.Close()
 
-		//calculate the hash using sha256
-		// byteHash := sha256.New()
-		// byteHash.Write(fileContent)
-		// finalHash := hex.EncodeToString(byteHash.Sum(nil))
-
-		// fmt.Println(finalHash)
-		// hs.AddHash(finalHash, filePath)
+		fileHash := hex.EncodeToString(chunkHasher.Sum(nil))
+		// fmt.Println(fileHash)
+		hs.AddHash(fileHash, filePath)
 	}
 }

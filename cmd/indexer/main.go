@@ -5,6 +5,7 @@ import (
 	"concurrent-file-indexer/internal/scanner"
 	"concurrent-file-indexer/internal/storage"
 	"concurrent-file-indexer/internal/worker"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -35,8 +36,8 @@ func main() {
 	elapsed := time.Since(start)
 	log.Printf("Time taken with %d workers:%s", nWorkers, elapsed)
 	//check if map is got updated with 5000 hashes
-	// mapLen := len(hstorage.Hashes)
-	// fmt.Println("Total Files Indexed:", mapLen)
+	mapLen := len(hstorage.Hashes)
+	fmt.Println("Total Files Indexed:", mapLen)
 }
 
 /*
